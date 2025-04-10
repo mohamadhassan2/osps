@@ -1,0 +1,421 @@
+import socket   # Socket library for network communication
+import logging  # Logging library for logging messages
+import threading    # Threading for concurrent server handling
+import re       # Regular expressions for parsing syslog messages
+from datetime import datetime   # Date and time handling
+import signal  # Signal handling for graceful shutdown
+import sys     # System library for system-specific parameters and functions
+import os      # OS library for operating system dependent functionality
+import argparse
+import json
+
+HOST='0.0.0.0'  # Listen on all interfaces
+TCP_PORT=1514    # TCP port
+UDP_PORT=1514   # UDP port
+DEFAULT_LOG_FILE = "syslog_server.log"  # Default log file name
+DEBUG_LEVEL = 0
+
+# Configure logging to write to file
+#log_file = "syslog_server.log"
+#logging.basicConfig(level=logging.DEBUG_LEVEL,format="%(asctime)s - %(message)s",filename=DEFAULT_LOG_FILE,filemode='a')
+
+r""""  Test routines below has escape code. Need to use r trick for mutli-line comments
+#--------------------------------------------------------------
+def parse_5424(syslog_line):
+    # Regex to parse the RFC 5424 syslog format
+    #regex = r"^(<(?P<pri>\d{1,3})>)\d (?P<timestamp>[0-9\-T:.Z]+) (?P<hostname>[\w.-]+) (?P<appname>\w+) (?P<procid>\S+) (?P<msgid>\S+) (?P<structured_data>(?:\[[^\]]*\])*) (?P<message>.+)$"
+    # Match the syslog message with the regex
+    match = re.match(regex, syslog_line)
+    if not match:
+        #raise ValueError("Invalid syslog format")
+        print(f"\033[91mInvalid syslog 5424 format\033[0m")
+    # Extract matched groups
+    parsed_data = match.groupdict()
+    # Parse the PRI value (facility and severity)
+    parsed_data['pri'] = parsed_data['pri']  # just extract PRI as a string
+    timestamp_str = parsed_data['timestamp']    # Extract the timestamp string into datatime object
+    try:
+        parsed_data['timestamp'] = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+    except ValueError:
+        #raise ValueError(f"Invalid timestamp format: {timestamp_str}")
+        print(f"\033[91mInvalid 5424 timestamp format: {timestamp_str}\033[0m")
+    
+    # Return the parsed log data
+    return parsed_data
+#End of parse_5424()    
+#--------------------------------------------------------------
+
+#--------------------------------------------------------------
+def parse_rfc3164(syslog_lines):
+    # Regex to parse the RFC 3164 syslog format
+   # regex = r"^(<(?P<pri>\d{1,3})>)\w{3} +(?P<day>\d{1,2}) (?P<time>\d{2}:\d{2}:\d{2}) (?P<hostname>[\w.-]+) (?P<appname>\w+): (?P<message>.+)$, re.MULTILINE"
+    # Match the syslog message with the regex
+    match = re.match(regex, syslog_lines)
+    if not match:
+        #print (syslog_lines)
+        #raise ValueError("🔴 Invalid syslog 3164 format", {syslog_lines})
+        print(f"\033[91mInvalid syslog 3164 format\033[0m", {syslog_lines})
+        #return None
+    # Extract matched groups
+    parsed_data = match.groupdict()
+    if match:
+        print (match.groupsdict())
+    else:
+        print ("Match not found")
+
+    exit()
+    # Parse the PRI value (facility and severity)
+    parsed_data['pri'] = parsed_data['pri']  # just extract PRI as a string
+
+    # Combine the month, day, and time to form the timestamp
+    month = syslog_lines.split()[1]  # Extract the month (e.g., Apr)
+    timestamp_str = f"{month} {parsed_data['day']} {parsed_data['time']}"
+    
+    # Convert to a full timestamp (add current year for consistency)
+    try:
+        parsed_data['timestamp'] = datetime.strptime(timestamp_str, "%b %d %H:%M:%S")
+    except ValueError:
+        #raise ValueError(f"Invalid timestamp format: {timestamp_str}")
+        print(f"\033[91mInvalid 3164 timestamp format: {timestamp_str}\033[0m")
+    # Return the parsed log data
+    return parsed_data
+#End of parse_rfc3164()    
+#--------------------------------------------------------------
+"""
+#--------------------------------------------------------------
+class C:
+    # ANSI escape codes for different colors
+    COLORS = {
+        "reset": "\033[0m",
+        "bold": "\033[1m",
+        "underline": "\033[4m",
+        "black": "\033[30m",
+        "red": "\033[31m",
+        "green": "\033[32m",
+        "yellow": "\033[33m",
+        "blue": "\033[34m",
+        "magenta": "\033[35m",
+        "cyan": "\033[36m",
+        "white": "\033[37m",
+        "grey": "\033[90m",
+        "light_red": "\033[91m",
+        "light_green": "\033[92m",
+        "light_yellow": "\033[93m",
+        "light_blue": "\033[94m",
+        "light_magenta": "\033[95m",
+        "light_cyan": "\033[96m",
+        "light_white": "\033[97m",
+    }
+    @staticmethod
+    def printline(text, color="reset", bold=False, underline=False):
+        """
+        Print text in a specified color.
+        :param text: The text to be printed
+        :param color: The color name (default is 'reset')
+        :param bold: If True, text will be bold
+        :param underline: If True, text will be underlined
+        """
+        color_code = C.COLORS.get(color, C.COLORS["reset"])
+        # Apply bold and underline if requested
+        if bold:
+            color_code = "\033[1m" + color_code
+        if underline:
+            color_code = "\033[4m" + color_code    
+        print(f"{color_code}{text}{C.COLORS['reset']}")
+# Example usage:
+    ''''
+    C.printline("This is a normal message.", "reset")    # Default color
+    C.printline("This is an error message.", "red")  # Print in red color
+    C.printline("This is a success message.", "green", bold=True)    # Print in green color with bold
+    C.printline("This is an informational message.", "blue", underline=True) # Print in blue color with underline
+    C.printline("This is a warning message.", "yellow", bold=True, underline=True)'  # Print in yellow with both bold and underline
+    '''
+#End of class C    
+#--------------------------------------------------------------
+#--------------------------------------------------------------
+# Set up logging configuration
+def setup_logging(log_file=DEFAULT_LOG_FILE):
+    logger = logging.getLogger()    # Create a logger instance
+    logger.setLevel(logging.INFO) #Set the logging level to INFO
+    
+    console_handler = logging.StreamHandler()   # Create a console handler and set its level to INFO
+    console_handler.setLevel(logging.INFO)
+    
+    file_handler = logging.FileHandler(log_file) # Create a file handler to log messages to a file and set its level to INFO
+    file_handler.setLevel(logging.INFO)
+    
+    # Create a formatter and set it for both handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - \033[94m%(message)s\033[0m')
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+    
+    # Add both handlers to the logger
+    #logger.addHandler(console_handler)  #Rem to stop**! console handler to the logger
+    logger.addHandler(file_handler) # Add the file handler to the logger
+    
+    return logger
+#End of setup_logging()
+#--------------------------------------------------------------
+#Function to setup signal traps. We need to know when user hit CTRL-C
+def signal_handler(sig, frame):
+        print('You pressed Ctrl+C!')
+        print("\nSIGINT received. Shutting down gracefully...")
+        logger.info("SIGINT received. Shutting down gracefully...")
+        sockets = []  # List to store all socket connections
+        for s in sockets:
+            try:
+                s.shutdown(socket.SHUT_RDWR)  # Disable further sends and receives
+                s.close()
+            except OSError as e:
+             print(f"Error closing socket: {e}")
+        
+        sys.exit(0)
+
+    #singal.pause()
+    #return
+#end of setup_signal_handling():
+#------------------------------------------------------------------------------
+
+#--------------------------------------------------------------
+def parse_syslog_message(data):
+    """Parse syslog message based on RFC 3164 or RFC 5424"""
+
+    #-----
+    #RFC3164_REGEX = re.compile(
+    #   r"^(?P<pri><\d{1,3}>)(?P<timestamp>\w{3} \d{1,2} \d{2}:\d{2}:\d{2}) (?P<hostname>[\w.-]+) (?P<appname>\w+) (?P<msgid>\S+) (?P<message>.*)$")
+    #RFC3164_REGEX = re.compile(r"^line", re.MULTILINE)
+
+    RFC3164_REGEX = re.compile(
+        r"^^(?P<pri><\d{1,3}>)|(?P<timestamp>\w{3}  {1,2}\d{1,2} \d{2}:\d{2}:\d{2}) (?P<hostname>\S+) (?P<appname>\S+)(?:\[(?P<pid>\d+)\])?: (?P<message>.+)$", re.M)
+    RFC5424_REGEX = re.compile(
+    r"^(?P<pri><\d{1,3}>)(?P<version>\d{1}) (?P<timestamp>[\d-]+T[\d:.]+[\w+]+) (?P<hostname>[\w.-]+) (?P<appname>\w+) (?P<procid>\S+) (?P<msgid>\S+) (?P<structureddata>\S*) (?P<message>.*)$", re.M)
+    #-------
+    
+    # Check if it's RFC 5424
+    match_5424 = RFC5424_REGEX.match(data)
+    if match_5424:
+        logtype = "RFC5424"
+        if DEBUG_LEVEL >= 2:
+            C.printline(f"Stream matched --RFC 5424--", "light_blue")
+            logger.info(f"Stream matched --RFC 5424--")
+        if DEBUG_LEVEL >=4:
+            pairs = data.split("\n")    # Split the data into lines
+            for pair in pairs:
+                value = (pair.split(","))   # Split each line into key-value pairs
+                #print (f"Pair: ->[{pair}]<-")
+                matches = RFC5424_REGEX.match(pair)
+                C.printline( (json.dumps(matches.groupdict(), indent=4) ), "light_yellow")  #show syslog lines as json
+
+        return logtype, match_5424.groupdict()
+    else:
+        logtype = "Unknown"
+    
+    
+    match_3164 = RFC3164_REGEX.match(data)
+    if match_3164:
+        logtype = "RFC3164"
+        if DEBUG_LEVEL >= 2:
+            C.printline(f"Stream matched --RFC 3164--", "light_blue", "bold=True")
+            logger.info(f"Stream matched --RFC 3164--")
+        if DEBUG_LEVEL >= 4:    
+            pairs = data.split("\n")    # Split the data into lines
+            for pair in pairs:
+                value = (pair.split(","))   # Split each line into key-value pairs
+                matches = RFC3164_REGEX.match(pair)
+                C.printline( (json.dumps(matches.groupdict(), indent=4) ), "light_blue")    #show syslog lines as json
+        return logtype, match_3164.groupdict()
+    else:
+        logtype = "Unknown"
+    
+    return logtype, None
+#End of parse_syslog_message()
+#--------------------------------------------------------------
+#--------------------------------------------------------------
+def handle_syslog_message(data, address, protocol):
+    """Process and log the syslog message"""
+    rfc_type = "RCF"
+    if DEBUG_LEVEL >= 2:
+        C.printline(f"[{len(data)}] bytes received \033[92m{protocol}\033[0m syslog message from {address}", "light_blue")
+        logger.info(f"[{len(data)}] bytes received {protocol} syslog message from {address}")   # Log to file
+        logger.info(f"Received syslog message from {address}")
+    if DEBUG_LEVEL >= 3:
+        C.printline(f"[{len(data)}] bytes received {protocol} syslog message from {address}:\n\033[90m{data}", "light_green") 
+        logger.info(f"[{len(data)}] bytes received {protocol} syslog message from {address}:\n\033[90m{data}")   # Log to file
+    
+    #print(f"\033[91mReceived syslog message from {address}: {data}\033[0m")
+    rfc_type, log_data = parse_syslog_message(data)   #; print(f"\n\033[90mParsed syslog message:\033[0m >[{log_data}]<") ; exit()
+    #print (f"{rfc_type}:  {type(rfc_type)}")
+    
+    if log_data:
+        message = log_data.get('message', '')
+        timestamp = log_data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        log_msg = f"{timestamp} - {message}"
+
+        # Log the message to a file
+        logging.info(log_msg)   # Log to file
+        #print(f"\033[90mLogged:\033[0m {log_msg}") # Display on console
+        logger.info(f"Logged: {log_msg}")   # Log to file
+    else:
+        if DEBUG_LEVEL >= 3:
+                C.printline(f"Failed to parse syslog message of type [{rfc_type}]. At least one event is confirming to RFC!", "light_red")
+                logger.info(f"\033[31mFailed to parse syslog {rfc_type} message!\033[0m")   # Log to file
+        #print("\033[94mFailed to parse syslog message!\033[0m")
+      
+#End of handle_syslog_message()        
+#--------------------------------------------------------------        
+#--------------------------------------------------------------
+def syslog_server_udp(host, port):
+    """Run a syslog server for UDP"""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket.bind((host, port))
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Allow address reuse when restarting the server quickly
+  #  server_socket.setblocking(False)  # Set non-blocking mode
+    C.printline(f"Syslog server \033[90m(UDP)\033[0m listening on {host}:{port}", "light_blue")
+    logger.info(f"Syslog server \033[90m(UDP)\033[0m listening on {host}:{port}")   # Log to file   
+    #print(f"\033[96mSyslog server (UDP) listening on {host}:{port}\033[0m")
+    counter = 0
+    data = {}
+    while True:
+        counter += 1
+        data, address = server_socket.recvfrom(1024)  # buffer size
+        data = data.decode('utf-8').strip()
+        handle_syslog_message(data, address, "UDP")  # Process the message
+#End of syslog_server_udp()        
+#--------------------------------------------------------------
+#--------------------------------------------------------------
+def syslog_server_tcp(host, port):
+    """Run a syslog server for TCP"""
+    server_socket = None
+    RECVBUF = 8192  # Buffer size for TCP. Increase if needed
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP socket
+        server_socket.bind((host, port))  # Bind to host and port
+        server_socket.listen(5)  # Listen for incoming connections (max 5)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Allow address reuse when restarting the server quickly
+        C.printline(f"Syslog server (TCP) listening on {host}:{port}", "light_blue")
+        logger.info(f"Syslog server (TCP) listening on {host}:{port}")
+        counter = 0
+        while True:
+            counter += 1
+            client_socket, client_address = server_socket.accept()  # Accept incoming connection
+            try:
+                if DEBUG_LEVEL >= 2:
+                    print(f"TCP Connection received from {client_address}: {counter}")
+                    logger.info(f"TCP Connection received from {client_address}")
+                while True:
+                    data = client_socket.recv(RECVBUF).decode('utf-8').strip()
+                    if data:
+                        handle_syslog_message(data, client_address, "TCP")
+                    else:
+                        break
+            except Exception as e:
+                C.printline(f"Error handling client: {e}", "light_red")
+                logger.error(f"Error handling client: {e}")
+            finally:
+                if client_socket:
+                    client_socket.close()
+                    print(f"TCP Connection closed from {client_address}")
+    except Exception as e:
+        C.printline(f"🆘 syslog_server_tcp(): An error occurred. Exit:{e}", "light_red")
+        logger.info(f"syslog_server_tcp(): An error occurred. Exit:{e}")
+    finally:
+        if server_socket:
+            server_socket.close()
+            print("🔴 Server closed.")
+       
+#End of syslog_server_tcp()        
+#--------------------------------------------------------------
+#--------------------------------------------------------------
+def run_syslog_threads(host=HOST, udp_port=UDP_PORT, tcp_port=TCP_PORT):
+    """Run both UDP and TCP syslog servers"""
+    udp_thread = threading.Thread(target=syslog_server_udp, args=(host, udp_port))  
+    tcp_thread = threading.Thread(target=syslog_server_tcp, args=(host, tcp_port))
+
+    udp_thread.daemon = True    # Set as daemon thread
+    tcp_thread.daemon = True    # Set as daemon thread
+
+    udp_thread.start()          # Start UDP server
+    tcp_thread.start()          # Start TCP server
+
+    udp_thread.join()          # Wait for UDP server to finish
+    tcp_thread.join()          # Wait for TCP server to finish
+#End of run_syslog_threads()    
+#--------------------------------------------------------------
+#------------------------------- generic listener  -------------
+#This code is a simple TCP server that listens for incoming connections and prints the received messages to the console.
+ # Create a socket to listen for messages https://realpython.com/python-sockets/
+def start_listening_socket(port):
+    print("\033[91m>>Starting generic socket server ****\033[0m]" )
+    logging.info("\033[91m>>Starting generic socket server ****\033[0m]" )
+    #HOST= "10.0.0.195"
+    HOST= "0.0.0.0"
+    PORT = 1514 
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   #Create a TCP socket
+        server_address = (HOST, PORT)
+        server_socket.bind(server_address)  #Bind the socket to the host and port
+        server_socket.listen(15)  # Listen to incoming connections. Maximum 5 queued connections
+        print(f"Listening on {HOST}:{PORT}...")
+        while True:
+            client_socket, client_address = server_socket.accept()   #Accept a connection
+            try:
+                print(f"Connection from {client_address}")
+                while True:
+                    data = client_socket.recv(1024)   #bufsize argument of 1024 used above is the maximum amount of data to be received at once   
+                    if not data:        
+                        break
+                    print(f"Received: {data.decode()}")
+            finally:
+                client_socket.close()
+    except Exception as e:
+         print(f"An error occurred: {e}")       
+    finally:
+        if 'server_socket' in locals():
+            server_socket.close()
+            print("Server closed.")
+    return None        
+#End of start_listening_socket()
+#------------------------------- generic listener  -------------
+
+
+
+#==============================================================
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)  # Setup signal handling
+
+        #----------------get args from user------------------------
+    this_script_name = os.path.basename(__file__)
+    parser = argparse.ArgumentParser(prog=this_script_name, \
+                                    description='For details on this script see: https://github.com/mohamadhassan2/download-github-security-vulnerabilities-/blob/main/README.md ')
+    parser.add_argument("-f", "--log_file", type=str, default=DEFAULT_LOG_FILE, \
+                        help="The output file name to save the results. [default: csv]", required=False )  
+    parser.add_argument('-t', '--type', type=str, \
+                        help="Set the type (ie ext) of the output file. If json selected additinal file will be generated.", required=False )      #option that takes a value
+    parser.add_argument('-d', '--debug', type=int, default='0', \
+                        help="Levels [0:none(default) 1:Show connections only 2:Show failed parsing 3:Show raw lines 4:Show json]]", required=False ), \
+    parser.add_argument('-r', '--syslog', action='store_true', default=False, \
+                        help="Enable syslog reciever mode.", required=False)
+    parser.add_argument('-s', '--socket', action='store_true', default=False, \
+                        help="Enable generic (TCP) socket reciever mode.", required=False )                        
+    
+    #print(f"[Output_file:{csv_filepath} {json_filepath}]   [Type:{args.type}]   [Debug Level:{DEBUG_LEVEL}]  [Enable Syslog:{args.syslog}]")   #debug 
+    args = parser.parse_args()
+    DEBUG_LEVEL = args.debug
+    logger = setup_logging()    # Setup logging
+    
+    if args.socket:
+        C.printline(f"Generic socket server enabled", "light_blue")
+        logger.info(f"Generic socket server enabled")
+        start_listening_socket(1514)
+    elif args.syslog:
+        C.printline(f"Syslog server enabled", "light_blue")
+        logger.info(f"Syslog server enabled")    
+        run_syslog_threads()    # Start both servers
+
+    #print("Press Ctrl+C to stop the server")
+   
+    #logger.info("Syslog server started......")
+    
+
+    # Note: This script requires root privileges to bind to port 514.
+#--------------------------------------------------------------

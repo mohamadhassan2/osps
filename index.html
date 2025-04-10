@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Router Configuration</title>
+  <script>
+    async function fetchConfig() {
+      const res = await fetch('/config');
+      const config = await res.json();
+      document.getElementById('config').textContent = JSON.stringify(config, null, 2);
+    }
+
+    async function updateConfig() {
+      const config = JSON.parse(document.getElementById('config').textContent);
+      await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+    }
+  </script>
+</head>
+<body>
+  <h1>Log Router Configuration</h1>
+  <pre id="config"></pre>
+  <button onclick="fetchConfig()">Load Configuration</button>
+  <button onclick="updateConfig()">Save Configuration</button>
+</body>
+</html>
+
