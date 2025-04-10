@@ -62,6 +62,7 @@ def start_raw_tcp_server(raw_tcp_recv_host, raw_tcp_recv_port, debug_level=0):
                     #message_count = len(data)
                     #print(f"Message count: {message_count}")
                     #message_count =99
+                    last_timestamp = time.time()
                     send_to_que(data, cache_dir, message_count, last_timestamp, event_cache, debug_level)  
                     
             finally:

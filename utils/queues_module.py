@@ -24,7 +24,11 @@ import time
 import os
 import glob
 import math
+from colorama import Fore, Back, Style,  init    # Import colorama for colored terminal output
+# Initialize colorama
+init(autoreset=True)  # Automatically reset color after each print
 
+#-----------------------  Importing my modules & local configs -------------------
 # Configuration
 MESSAGES_NUM_THRESHOLD = 1000  # Number of messages before writing to disk
 RATE_MSGS_PER_SEC_THRESHOLD = 10000 #10000000  # Messages per second before writing to disk
@@ -32,10 +36,7 @@ RATE_MSGS_PER_SEC_THRESHOLD = 10000 #10000000  # Messages per second before writ
 CACHE_FILE_NAME = "raw_tcp.tmp"  # File name for the cache
 MAX_CACHE_SIZE = 10 * 1024 * 1024  # Maximum size of the cache file in bytes (10MB)
 TIME_WINDOW = 1  # Time window in seconds for rate calculation (1 second)
-
-from colorama import Fore, Back, Style,  init    # Import colorama for colored terminal output
-# Initialize colorama
-init(autoreset=True)  # Automatically reset color after each print
+#-----------------------  Importing my modules & local configs -------------------
 
 # Global variables to manage incoming events and message rates
 event_cache = []
@@ -91,7 +92,8 @@ def setup_cache_directory(cache_dir,debug_level=0):
         os.makedirs(cache_dir)
         #print(f"Cache directory created: {cache_dir}")
     except Exception as e:
-        print(f"[{__name__}]Cache directory [{cache_dir}] present! ")   #{e}")
+        if debug_level >= 1:
+            print(f"[{__name__}]Cache directory [{cache_dir}] present! ")   #{e}")
 #End of function setup_cache_directory()
 #--------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -139,7 +141,7 @@ def send_to_que(data, cache_dir, message_count, last_timestamp=0, event_cache=[]
     b=(cache_size > MAX_CACHE_SIZE)
     #a=False; b=False
     #identify the trigger in print() output with colors
-    print(f" cache size:{cache_dir_size_mb:.2f}MB  MAX:{MAX_CACHE_SIZE_MB}MB]")
+    #print(f" cache size:{cache_dir_size_mb:.2f}MB  MAX:{MAX_CACHE_SIZE_MB}MB]")
     if a or b:
         if debug_level >= 1:
             if a and b:

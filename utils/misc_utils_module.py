@@ -24,6 +24,7 @@ def print_error_details(e):
     exc_type, exc_value, exc_traceback = sys.exc_info()
     traceback_details = traceback.extract_tb(exc_traceback)
     filename, line_number, function_name, text = traceback_details[-1]
+    print(f"{Fore.RED}--------{__name__}-----")
     print(f"{Fore.RED}Error: {e}")
     print(f"{Fore.RED}Error occurred in file: {filename}")
     print(f"{Fore.RED}Line number: {line_number}")

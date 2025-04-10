@@ -13,13 +13,21 @@ import threading
 import time
 from colorama import Fore, Back, Style, init
 # Initialize colorama
-init()
-#--------------------------------------------------------------
-from configs.globals_module import DEFAULT_SYSLOG_FILE, SYSLOG_RECV_HOST, SYSLOG_RECV_TCP_PORT, SYSLOG_RECV_UDP_PORT, \
-    OSPS_DEFAULT_LOG_FILE, SYSLOG_TCP_RECV_BUFF_SIZE, DEFAULT_DEBUG_LEVEL
-from utils.misc_utils_module import C, setup_logging, signal_handler
+init(autoreset=True)  # Automatically reset color after each print
+
+#-----------------------  Importing my modules & local configs -------------------
+OSPS_DEFAULT_LOG_FILE = "osps.log"
+DEFAULT_DEBUG_LEVEL = 0
+DEFAULT_SYSLOG_FILE = "syslog_server.log"
+SYSLOG_RECV_HOST = '0.0.0.0'
+SYSLOG_RECV_UDP_PORT = 1514  # Default syslog UDP port
+SYSLOG_RECV_TCP_PORT = 1514  # Default syslog TCP port
+SYSLOG_TCP_RECV_BUFF_SIZE = 1024  # Buffer size for TCP. Increase if needed
+CACHE_DIR = 'syslog_que'
+
+from utils.misc_utils_module import print_error_details, setup_logging, signal_handler
 from utils.caching_engine_module import CacheEngine, fetch_data_from_api2
-#--------------------------------------------------------------
+#-----------------------  Importing my modules & local configs -------------------
 
 logger = setup_logging(DEFAULT_SYSLOG_FILE)  # Set up logging configuration
 
@@ -40,35 +48,35 @@ def parse_syslog_message(data, DEBUG_LEVEL=0):
     if match_5424:
         logtype = "RFC5424"
         if DEBUG_LEVEL >= 2:
-            C.printline(f"Stream matched --RFC 5424--", "light_blue")
-            logger.info(f"Stream matched --RFC 5424--")
+            print(f"{Fore.LIGHTBLUE_EX}Stream matched --RFC 5424--")
+            logger.info(f"{Fore.LIGHTBLUE_EX}Stream matched --RFC 5424--")
         if DEBUG_LEVEL >=4:
             pairs = data.split("\n")    # Split the data into lines
             for pair in pairs:
                 value = (pair.split(","))   # Split each line into key-value pairs
                 #print (f"Pair: ->[{pair}]<-")
                 matches = RFC5424_REGEX.match(pair)
-                C.printline( (json.dumps(matches.groupdict(), indent=4) ), "light_yellow")  #show syslog lines as json
+                print( f"{Fore.LIGHTYELLOW_EX}{json.dumps(matches.groupdict(), indent=4)}")  #show syslog lines as json
 
         return logtype, match_5424.groupdict()
     else:
-        logtype = "Unknown"
+        logtype = "UNKNOWN"
     
     match_3164 = RFC3164_REGEX.match(data)
     if match_3164:
         logtype = "RFC3164"
         if DEBUG_LEVEL >= 2:
-            C.printline(f"Stream matched --RFC 3164--", "light_blue", "bold=True")
-            logger.info(f"Stream matched --RFC 3164--")
+            print(f"{Fore.LIGHTBLUE_EX}Stream matched --RFC 3164--")
+            logger.info(f"{Fore.LIGHTBLUE_EX}Stream matched --RFC 3164--")
         if DEBUG_LEVEL >= 4:    
             pairs = data.split("\n")    # Split the data into lines
             for pair in pairs:
                 value = (pair.split(","))   # Split each line into key-value pairs
                 matches = RFC3164_REGEX.match(pair)
-                C.printline( (json.dumps(matches.groupdict(), indent=4) ), "light_blue")    #show syslog lines as json
+                print(f"{Fore.LIGHTBLUE_EX}{json.dumps(matches.groupdict(), indent=4)}")    #show syslog lines as json
         return logtype, match_3164.groupdict()
     else:
-        logtype = "Unknown"
+        logtype = "UNKNOWN"
     
     return logtype, None
 #End of parse_syslog_message()
@@ -78,15 +86,14 @@ def handle_syslog_message(data, address, protocol, DEBUG_LEVEL=0, mps=0):
     """Process and log the syslog message"""
     rfc_type = "RCF"
     if DEBUG_LEVEL >= 2:
-        C.printline(f"[{len(data)}] bytes received \033[92m{protocol}\033[0m syslog message from {address}", "light_blue")
-        logger.info(f"[{len(data)}] bytes received {protocol} syslog message from {address}")   # Log to file
-        logger.info(f"Received syslog message from {address}")
+        print(f"[{len(data)}] Bytes received {Fore.MAGENTA}{protocol}{Fore.RESET} syslog message from {address}")
+        logger.info(f"[{len(data)}] Bytes received {Fore.MAGENTA}{protocol}{Fore.RESET} syslog message from {address}")   # Log to file
     if DEBUG_LEVEL >= 3:
-        C.printline(f"[{len(data)}] bytes received {protocol} syslog message from {address}:\n\033[90m{data}", "light_green") 
-        logger.info(f"[{len(data)}] bytes received {protocol} syslog message from {address}:\n\033[90m{data}")   # Log to file
+        print(f"{Fore.LIGHTMAGENTA_EX}DATA:[{data}]{Fore.LIGHTBLACK_EX}  [lenght:{len(data)}]{Fore.RESET} ")  # Print without newline
+        logger.warning(f"{Fore.LIGHTMAGENTA_EX}DATA:[{data}]{Fore.LIGHTGREEN_EX}  [length:{len(data)}]{Fore.RESET}) # Log to file")         
     
-    #print(f"\033[91mReceived syslog message from {address}: {data}\033[0m")
-    rfc_type, log_data = parse_syslog_message(data, DEBUG_LEVEL)   #; print(f"\n\033[90mParsed syslog message:\033[0m >[{log_data}]<") ; exit()
+    #print(f"\033[91mReceived syslog message from {address}: {data}{Fore.RESET}")
+    rfc_type, log_data = parse_syslog_message(data, DEBUG_LEVEL)   #; print(f"\n{Fore.MAGENTA}Parsed syslog message:{Fore.RESET} >[{log_data}]<") ; exit()
     #print (f"{rfc_type}:  {type(rfc_type)}")
     
     if log_data:
@@ -94,7 +101,7 @@ def handle_syslog_message(data, address, protocol, DEBUG_LEVEL=0, mps=0):
         timestamp = log_data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         log_msg = f"{timestamp} - {message}"
         logger.info(f"Logged: {log_msg}")   # Log to file    
-    
+        
         #......... caching code .....................................
         #print (f"MPS in handle_syslog_message(): {mps:.2f}")
         # Create an instance of CacheEngine
@@ -104,19 +111,19 @@ def handle_syslog_message(data, address, protocol, DEBUG_LEVEL=0, mps=0):
         #data = cache_engine.get_cached_data(cache_key, fetch_data_from_api2, mps)
         #from_file_cache=False
         #data, from_file_cache = cache_engine.get_cached_data(cache_key, log_data, mps )
-        #print(f"\033[31mFetched Data to cache>>>:\033[0m {data}")
-        #print(f"\033\[31mFetched Data to cache>>>: {log_msg}\033[0m")
+        #print(f"\033[31mFetched Data to cache>>>:{Fore.RESET} {data}")
+        #print(f"\033\[31mFetched Data to cache>>>: {log_msg}{Fore.RESET}")
         #if from_file_cache:
-        #    print(f"\033[90mLogged:\033[0m {log_msg}") # Display on console. Dimmed text
+        #    print(f"{Fore.MAGENTA}Logged:{Fore.RESET} {log_msg}") # Display on console. Dimmed text
         #else:    
-        #    print(f"\033[90m;47mLogged:\033[0m {log_msg}") # Display on console
+        #    print(f"{Fore.MAGENTA};47mLogged:{Fore.RESET} {log_msg}") # Display on console
         #......... caching code .....................................
 
     else:
         if DEBUG_LEVEL >= 3:
-                C.printline(f"Failed to parse syslog message of type [{rfc_type}]. At least one event is confirming to RFC!", "light_red")
-                logger.info(f"\033[31mFailed to parse syslog {rfc_type} message!\033[0m")   # Log to file
-        #print("\033[94mFailed to parse syslog message!\033[0m")
+                print(f" Stream matched --RFC {rfc_type}-- {Fore.LIGHTRED_EX}Failed to parse. At least one event is not confirming to RFC!")
+                logger.warning(f" Stream matched --RFC {rfc_type}-- {Fore.LIGHTRED_EX}Failed to parse. At least one event is not confirming to RFC!")
+        #print("\033[94mFailed to parse syslog message!{Fore.RESET}")
     
 #End of handle_syslog_message()        
 #--------------------------------------------------------------        
@@ -127,9 +134,9 @@ def syslog_server_udp(host, port, DEBUG_LEVEL=0):
     server_socket.bind((host, port))
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Allow address reuse when restarting the server quickly
   #  server_socket.setblocking(False)  # Set non-blocking mode
-    C.printline(f"Syslog server \033[90m(UDP)\033[0m listening on {host}:{port}", "light_blue")
-    logger.info(f"Syslog server \033[90m(UDP)\033[0m listening on {host}:{port}")   # Log to file   
-    #print(f"\033[96mSyslog server (UDP) listening on {host}:{port}\033[0m")
+    print(f"Syslog server {Fore.MAGENTA}(UDP){Fore.RESET} listening on {host}:{port}\n")
+    logger.info(f"Syslog server {Fore.MAGENTA}(UDP){Fore.RESET} listening on {host}:{port}")   # Log to file   
+    #print(f"\033[96mSyslog server (UDP) listening on {host}:{port}{Fore.RESET}")
     counter = 0
     data = {}
     while True:
@@ -164,8 +171,8 @@ def syslog_server_tcp(host, port, DEBUG_LEVEL=0):
         server_socket.listen(5)  # Listen for incoming connections (max 5)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Allow address reuse when restarting the server quickly
 
-        C.printline(f"Syslog server (TCP) listening on {host}:{port}", "light_blue")
-        logger.info(f"Syslog server (TCP) listening on {host}:{port}")
+        print(f"Syslog server {Fore.LIGHTBLUE_EX}(TCP){Fore.RESET} listening on {host}:{port}")
+        logger.info(f"Syslog server {Fore.LIGHTBLUE_EX}(TCP){Fore.RESET} listening on {host}:{port}")
         counter = 0
         while True:
             counter += 1
@@ -190,19 +197,20 @@ def syslog_server_tcp(host, port, DEBUG_LEVEL=0):
                     else:
                         break
             except Exception as e:
-                C.printline(f"Error handling client: {e}", "light_red")
+                print_error_details(e)
                 logger.error(f"Error handling client: {e}")
             finally:
                 if client_socket:
                     client_socket.close()
                     print(f"TCP Connection closed from {client_address}")
     except Exception as e:
-        C.printline(f"🆘 syslog_server_tcp(): An error occurred. Exit:{e}", "light_red")
+        print_error_details(e)
         logger.info(f"syslog_server_tcp(): An error occurred. Exit:{e}")
     finally:
         if server_socket:
             server_socket.close()
             print("🔴 Server closed.")     
+            
 #End of syslog_server_tcp()        
 #--------------------------------------------------------------
 #==============================================================
