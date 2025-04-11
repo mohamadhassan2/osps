@@ -11,6 +11,10 @@ import requests
 from datetime import datetime
 import json
 import sys
+import colorama
+from colorama import Fore, Back, Style, init
+# Initialize colorama
+init(autoreset=True)  # Automatically reset color after each print
 
 #------------------  Importing my modules & Local configs -------------------
 from configs.globals_module import  OSPS_DEFAULT_LOG_FILE
@@ -18,6 +22,31 @@ from configs.globals_module import  OSPS_DEFAULT_LOG_FILE
 
 logger = logging.getLogger(__name__)
 
+
+#--------------------------------------------------------------
+def DLevel(DEBUG_LEVEL=0):
+    import sys
+    import sys
+    frame = sys._getframe(1)  # Caller frame
+    func_name = frame.f_code.co_name
+    line_no = frame.f_lineno
+    #return f"[D:{DEBUG_LEVEL}] Function:[{func_name}] Line:[{line_no}]"
+    data =[]
+    """Set the debug level"""
+    if DEBUG_LEVEL >= 5:
+        return f'[D:{Fore.LIGHTRED_EX}{DEBUG_LEVEL}{Fore.RESET}][Func:{func_name}]' #, end=line:[{sys._getframe().f_lineno}]"
+    
+    if DEBUG_LEVEL >= 4:
+        return f'[D:{Fore.LIGHTRED_EX}{DEBUG_LEVEL}{Fore.RESET}]'
+    if DEBUG_LEVEL >= 3:
+        return f'[D:{Fore.LIGHTRED_EX}{DEBUG_LEVEL}{Fore.RESET}]'
+    if DEBUG_LEVEL == 2:
+        return f'[D:{Fore.LIGHTRED_EX}{DEBUG_LEVEL}{Fore.RESET}]'
+    if DEBUG_LEVEL == 1:
+        return f'[D:{Fore.LIGHTRED_EX}{DEBUG_LEVEL}{Fore.RESET}]'
+    
+#End of DLevel()
+#--------------------------------------------------------------
 #--------------------------------------------------------------
 # Function to print error details
 def print_error_details(e):

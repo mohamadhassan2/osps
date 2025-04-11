@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     if args.socket:
         print("\n")
-        print (f"🟢{Back.YELLOW+Fore.BLACK}Raw TCP socket server enabled", "light_blue")
+        print (f"🟢{Back.YELLOW+Fore.BLACK}Raw TCP socket server enabled")
         logger.info(f"🟢 Raw TCP socket server enabled")
         start_raw_tcp_server(RAW_TCP_RECV_HOST, RAW_TCP_RECV_PORT, DEBUG_LEVEL)   # From sources/raw_tcp_receiver_server_module.py
     elif args.syslog:
@@ -86,27 +86,27 @@ if __name__ == "__main__":
         print("\n")
         print (f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC1 server enabled.")
         logger.info(f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC1 server enabled.")
-        start_hec1_server()     #From sources/hec1_module.py
+        start_hec1_server(DEBUG_LEVEL=args.debug)     #From sources/hec1_module.py
     elif args.hec2:
         print("\n")
         print (f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC2 server enabled (WSGI implementation)")
         logger.info(f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC2 server enabled (WSGI implementaion)")
-        start_hec2_server()     # From sources/hec2_wsgi_module.py
+        start_hec2_server(DEBUG_LEVEL=args.debug)     # From sources/hec2_wsgi_module.py
     elif args.hec3:
         print("\n")
         print (f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC3 server enabled (Flask)")
         logger.info(f"🟢 {Back.YELLOW+Fore.BLACK}Splunk HEC3 server enabled (Flask)")
-        start_hec3_server()   # From sources/hec3_splunk_Flask_receiver_module.py
+        start_hec3_server(DEBUG_LEVEL=args.debug)   # From sources/hec3_splunk_Flask_receiver_module.py
     elif args.rest1:
         print("\n")
         print (f"🟢 {Back.YELLOW+Fore.BLACK}REST API collector enabled")
         logger.info(f"🟢 {Back.YELLOW+Fore.BLACK}REST API collector enabled")
-        run_rest1_api_collector()      # From sources/rest1_api_collector_module.py
+        run_rest1_api_collector(DEBUG_LEVEL=args.debug)      # From sources/rest1_api_collector_module.py
     elif args.rest2:
         print("\n")
         print (f"🟢 {Back.YELLOW+Fore.BLACK}REST2 API collector enabled (HATEOAS)")
         logger.info(f"🟢 {Back.YELLOW+Fore.BLACK}REST2 API collector enabled (HATEOAS)")
-        run_rest2_hateoas_api_collector()    # From sources/rest2_hateoas_api_collector_module.py
+        run_rest2_hateoas_api_collector(DEBUG_LEVEL=args.debug)    # From sources/rest2_hateoas_api_collector_module.py
         
 
     #print("Press Ctrl+C to stop the server")

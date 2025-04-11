@@ -4,6 +4,9 @@
 # # # # It is intended to be used in conjunction with other components, such as a logging framework or data processing pipeline.
 # # # #--------------------------------------------------------------
 
+from colorama import Fore, Back, Style, init
+# Initialize colorama
+init(autoreset=True)  # Automatically reset color after each print
 import requests
 
 #--------------------------------------------------------------
@@ -94,7 +97,10 @@ def fetch_data_from_api(api_url, headers, auth):
 #--------------------------------------------------------------
 #==============================================================
 # Function to run the REST API collector
-def run_rest1_api_collector():
+def run_rest1_api_collector(DEBUG_LEVEL=0):
+
+    if DEBUG_LEVEL != 0:
+        print(f"{Fore.YELLOW+Back.LIGHTRED_EX+Style.BRIGHT} **** LEVEL:{DEBUG_LEVEL} DEBUG MODE ENABLED **** {Fore.RESET}")
     api_url, headers, auth = get_user_configuration()
 
     print("Fetching data from the API...")

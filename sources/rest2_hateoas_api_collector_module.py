@@ -11,9 +11,15 @@
 #that tell the client where to go next.
 
 
-from configs.globals_module import GITHUB_ADVISORY_URL, GITHUB_TOKEN, CISA_KEV_URL
+
 
 import requests
+from colorama import Fore, Back, Style, init
+# Initialize colorama
+init(autoreset=True)  # Automatically reset color after each print
+#-----------------------  Importing my modules & local configs -------------------
+from configs.globals_module import GITHUB_ADVISORY_URL, GITHUB_TOKEN, CISA_KEV_URL
+#------------------------  Importing my modules & local configs -------------------
 
 #--------------------------------------------------------------
 # This module implements a generic REST API client that can fetch data from a specified API endpoint.
@@ -121,7 +127,11 @@ def navigate_hateoas(api_url, headers, auth):
 #END of navigate_hateoas function()
 #--------------------------------------------------------------
 ###============================================================
-def run_rest2_hateoas_api_collector():
+def run_rest2_hateoas_api_collector(DEBUG_LEVEL=0):
+    
+    if DEBUG_LEVEL != 0:
+        print(f"{Fore.YELLOW+Back.LIGHTRED_EX+Style.BRIGHT} **** LEVEL:{DEBUG_LEVEL} DEBUG MODE ENABLED **** {Fore.RESET}")
+
     api_url, headers, auth = get_user_configuration()
 
     print("Navigating through the API using HATEOAS...")

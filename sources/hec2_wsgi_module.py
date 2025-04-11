@@ -90,7 +90,13 @@ def splunk_hec_app(environ, start_response):
 #--------------------------------------------------------------
 #==============================================================
 # Create and run the WSGI server on port 
-def start_hec2_server():
+def start_hec2_server(DEBUG_LEVEL=0):
+
+    if DEBUG_LEVEL != 0:
+        print(f"{Fore.YELLOW+Back.LIGHTRED_EX+Style.BRIGHT} **** LEVEL:{DEBUG_LEVEL} DEBUG MODE ENABLED **** {Fore.RESET}")
+        
+    # Set the host and port for the server
+
     # Define the server and the application
     httpd = make_server(HEC_RECV_HOST, HEC_RECV_PORT, splunk_hec_app)
     print(f"{Fore.BLUE}Splunk HEC (WSGI) server running on {HEC_RECV_HOST}:{HEC_RECV_PORT}")

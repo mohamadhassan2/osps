@@ -36,6 +36,7 @@ RATE_MSGS_PER_SEC_THRESHOLD = 10000 #10000000  # Messages per second before writ
 CACHE_FILE_NAME = "raw_tcp.tmp"  # File name for the cache
 MAX_CACHE_SIZE = 10 * 1024 * 1024  # Maximum size of the cache file in bytes (10MB)
 TIME_WINDOW = 1  # Time window in seconds for rate calculation (1 second)
+from utils.misc_utils_module import print_error_details, DLevel
 #-----------------------  Importing my modules & local configs -------------------
 
 # Global variables to manage incoming events and message rates
@@ -45,7 +46,7 @@ event_cache = []
 
 #---------------------------------------------------------------------
 def print_que_configs(debug_level,  message_count=0, last_timestamp=0, event_cache=[], cache_dir=''):
-    print(f"D{debug_level}{Fore.YELLOW}---------------[{__name__}] Que configurations---------------")
+    print(f"{DLevel(debug_level)}{Fore.YELLOW}---------------[{__name__}] Que configurations---------------")
     #print(f"Syslog Server Configuration:")
     #print(f"Port: {SYSLOG_PORT}")
     print(f"TIME WINDOW (Time window in seconds for rate calculation): {Fore.BLUE}{TIME_WINDOW} seconds")
@@ -55,7 +56,7 @@ def print_que_configs(debug_level,  message_count=0, last_timestamp=0, event_cac
     print(f"MAX CACHE SIZE (Maximum size of the cache file in bytes): {Fore.BLUE}{MAX_CACHE_SIZE / (1024 * 1024)}MB\t\t\t{Fore.YELLOW}[Event Cache Size: {len(event_cache)}]")
     print(f"Current Cache Size: {Fore.BLUE}{get_cache_size(cache_dir) / (1024 * 1024)} MB")
     
-    print(f"D{debug_level}{Fore.YELLOW}---------------[{__name__}] Que configurations---------------")
+    print(f"{DLevel(debug_level)}{Fore.YELLOW}---------------[{__name__}] Que configurations---------------")
     #print(f"Event Cache Size: {len(event_cache)}")
     return None
 #End of function print_que_configs()
@@ -71,7 +72,7 @@ def write_cache_to_disk(events,cache_dir, debug_level):
             #f.write(event + '\n')
             f.write(event.decode('utf-8'))  # Decode bytes to string before writing
     if debug_level >= 2:        
-        print(f"D{debug_level}{Fore.GREEN}[{__name__}]Cache written to: {cache_file_path}")
+        print(f"{DLevel(debug_level)}{Fore.GREEN}[{__name__}]Cache written to: {cache_file_path}")
 #End of function write_cache_to_disk()    
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
@@ -86,14 +87,14 @@ def setup_cache_directory(cache_dir,debug_level=0):
     # Ensure the cache directory exists
     if not os.path.exists(cache_dir):
         if debug_level >= 3:
-            print(f"D{debug_level}[{__name__}]Cache directory [{cache_dir}] does not exist. Creating...")
+            print(f"{DLevel(debug_level)}[{__name__}]Cache directory [{cache_dir}] does not exist. Creating...")
     try:
         # Create the cache directory if it doesn't exist
         os.makedirs(cache_dir)
         #print(f"Cache directory created: {cache_dir}")
     except Exception as e:
         if debug_level >= 1:
-            print(f"[{__name__}]Cache directory [{cache_dir}] present! ")   #{e}")
+            print(f"{DLevel(debug_level)}[{__name__}]Cache directory [{cache_dir}] present! ")   #{e}")
 #End of function setup_cache_directory()
 #--------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -111,7 +112,7 @@ def get_cache_size(cache_dir):
 def send_to_que(data, cache_dir, message_count, last_timestamp=0, event_cache=[], debug_level=0):
     
     
-    event = data.decode('utf-8').strip()
+    #event = data.decode('utf-8').strip()
     #print(f"Received event: {event} from {addr}\n")  #debugging
     event_cache.append(data)
     #message_count += 1
@@ -126,7 +127,7 @@ def send_to_que(data, cache_dir, message_count, last_timestamp=0, event_cache=[]
         last_timestamp = current_timestamp
         if rate >= RATE_MSGS_PER_SEC_THRESHOLD:
             if debug_level >= 1:
-                print(f"D{debug_level}{Fore.CYAN+Style.BRIGHT}[{__name__}]> Msg/sec Rate threshold [{rate}/{RATE_MSGS_PER_SEC_THRESHOLD}] exceeded, writing cache to disk...")
+                print(f"{DLevel(debug_level)}{Fore.CYAN+Style.BRIGHT}[{__name__}]> Msg/sec Rate threshold [{rate}/{RATE_MSGS_PER_SEC_THRESHOLD}] exceeded, writing cache to disk...")
             write_cache_to_disk(event_cache, cache_dir, debug_level)
             event_cache.clear()  # Clear the cache after writing to disk
             message_count = 0  # Reset message count after writing
@@ -145,16 +146,16 @@ def send_to_que(data, cache_dir, message_count, last_timestamp=0, event_cache=[]
     if a or b:
         if debug_level >= 1:
             if a and b:
-                print(f"D{debug_level}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold {Fore.YELLOW}[{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size {Fore.YELLOW}[{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
+                print(f"{DLevel(debug_level)}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold {Fore.YELLOW}[{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size {Fore.YELLOW}[{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
             elif a and not b:
-                print(f"D{debug_level}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold {Fore.YELLOW}[{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size [{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
+                print(f"{DLevel(debug_level)}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold {Fore.YELLOW}[{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size [{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
             elif b and not a:
-                print(f"D{debug_level}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold [{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size {Fore.YELLOW}[{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
+                print(f"{DLevel(debug_level)}{Fore.BLUE+Style.NORMAL}[{__name__}> Max num msgs threshold [{len(event_cache)}/{MESSAGES_NUM_THRESHOLD}] {Fore.BLUE+Style.NORMAL}or event cache size {Fore.YELLOW}[{cache_dir_size_mb:.2f}MB/{MAX_CACHE_SIZE_MB}MB] {Fore.BLUE+Style.NORMAL}exceeded, writing to cache disk...{Fore.RESET}")
                     
         write_cache_to_disk(event_cache, cache_dir,debug_level)
         event_cache.clear()  # Clear the cache after writing to disk
 
-    if debug_level >= 4:      
+    if debug_level >= 5:      
         print_que_configs(debug_level, message_count, last_timestamp=last_timestamp, event_cache=event_cache)
 
 #End of function send_to_que()            

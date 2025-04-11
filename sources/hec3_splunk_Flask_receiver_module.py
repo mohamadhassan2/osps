@@ -112,6 +112,11 @@ def receive_event():
 #    # Run the Flask app
 #    
 #============================================================
-def start_hec3_server():
+def start_hec3_server(DEBUG_LEVEL):
+    
+    print(f"{Fore.GREEN}>>Starting Splunk HEC3 server..." )
+
+    if DEBUG_LEVEL != 0:
+        print(f"{Fore.YELLOW+Back.LIGHTRED_EX+Style.BRIGHT} **** LEVEL:{DEBUG_LEVEL} DEBUG MODE ENABLED **** {Fore.RESET}")
     
     app.run(host='0.0.0.0', port=8080, debug=True)

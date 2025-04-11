@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 import json
 
 import requests
+from colorama import Back, Style, init, Fore
+init(autoreset=True)  # Automatically reset color after each print  
+#------------------  Importing my modules & Local configs -------------------
 
 #from configs.globals_module import OSPS_DEFAULT_LOG_FILE, HEC_RECV_HOST, HEC_RECV_PORT, HEC_RECV_PATH
 # from utils.misc_utils_module import setup_logging, signal_handler
@@ -36,7 +39,14 @@ def send_event_to_splunk(event_data):
 @app.route('/start_hec1_server', methods=['POST'])
 
 #--------------------------------------------------------------------
-def start_hec1_server():
+def start_hec1_server(DEBUG_LEVEL=0):
+
+    print(f"{Fore.GREEN}>>Starting Splunk HEC server..." )
+    if DEBUG_LEVEL != 0:
+        print(f"{Fore.YELLOW+Back.LIGHTRED_EX+Style.BRIGHT} **** LEVEL:{DEBUG_LEVEL} DEBUG MODE ENABLED **** {Fore.RESET}")
+    
+
+
     #Function: Endpoint to receive events from Splunk HEC
     try:
         event_data = request.get_json()  # Get JSON payload from the incoming request
@@ -52,7 +62,7 @@ def start_hec1_server():
 #--------------------------------------------------------------------    
 
 #====================================================================
-if __name__ == "__main__":
-    # Run the Flask app
+#if __name__ == "__main__":
+#    # Run the Flask app
     app.run(host='0.0.0.0', port=8080, debug=True)
 #====================================================================
